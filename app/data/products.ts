@@ -1,32 +1,113 @@
 // app/data/products.ts
 
-export type ProductVariant = {
-id: string;
-color: string;
-image: string;
-imageHover?: string;
+export type ProductStatus =
+  | "Brouillon"
+  | "En développement"
+  | "En vente"
+  | "En pause"
+  | "Arrêté";
+
+export type ProductDimensions = {
+  lengthCm: number;
+  heightCm: number;
+  widthCm: number;
 };
+
+export type ProductVariant = {
+  id: string;
+
+  sku?: string;
+  name?: string;
+  size?: string;
+  color: string;
+
+  price?: number;
+  costPrice?: number;
+
+  dimensions?: ProductDimensions;
+  weightGrams?: number;
+
+  stock?: number;
+  stockMin?: number;
+  status?: ProductStatus;
+
+  image: string;
+  imageHover?: string;
+  images?: string[];
+
+  barcode?: string;
+
+  location?: string;
+
+  isDefault?: boolean;
+
+  sortOrder?: number;
+
+};
+
 
 export type Product = {
-id: string;
-slug: string;
-name: string;
-price: number;
-image: string;
-imageHover?: string;
-category: "Bijoux" | "Sacs & accessoires" | "Décoration" | "Épices";
+  // Identification permanente
+  id: string;
+  seedId?: string;
+  sku?: string;
+  referenceCode?: string;
+  weightGrams?: number;
+
+
+  // Identification commerciale
+  slug: string;
+  name: string;
+  collection?: string;
+
+  category:
+    | "Bijoux"
+    | "Sacs & accessoires"
+    | "Décoration"
+    | "Épices";
+
+  status?: ProductStatus;
+
+  // Tarification par défaut
+  price: number;
+  costPrice?: number;
+  stock?: number;
+  stockMin?: number;
+
+  // Visuels principaux
+  image: string;
+  imageHover?: string;
+  images?: string[];
+
+  // Contenu du site
 tags: string[];
 description: string;
-
-badges?: ("Nouveauté" | "Best-seller" | "Stock limité")[];
 short?: string;
-material?: string;
-dimensions?: string;
+badges?: ("Nouveauté" | "Best-seller" | "Stock limité")[];
 
-variants?: ProductVariant[];
+// Référencement Google (SEO)
+seoTitle?: string;
+seoDescription?: string;
 
-bundle?: { qty: number; price: number };
+  // Caractéristiques générales
+  material?: string;
+  dimensions?: string;
+
+  // Fabrication
+  originCountry?: string;
+  handmade?: boolean;
+  artisanPartner?: string;
+
+  // Déclinaisons
+  variants?: ProductVariant[];
+
+  // Offre groupée
+  bundle?: {
+    qty: number;
+    price: number;
+  };
 };
+
 
 export const DEFAULT_PRODUCT_IMAGE =
 "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=80";
@@ -49,142 +130,7 @@ dimensions: "35 × 45 cm",
 
 bundle: { qty: 6, price: 19.5 },
 
-variants: [
-{
-id: "tisse-bleu",
-color: "Bleu",
-image: "/images/decoration/set-table-tisse/bleu-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/bleu-2.jpg",
-},
-{
-id: "tisse-carreaux-multi",
-color: "Carreaux multi",
-image: "/images/decoration/set-table-tisse/carreaux-multi-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/carreaux-multi-2.jpg",
-},
-{
-id: "tisse-jaune",
-color: "Jaune",
-image: "/images/decoration/set-table-tisse/jaune-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/jaune-2.jpg",
-},
-{
-id: "tisse-vert",
-color: "Vert",
-image: "/images/decoration/set-table-tisse/vert-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/vert-2.jpg",
-},
-{
-id: "tisse-orange",
-color: "Orange",
-image: "/images/decoration/set-table-tisse/orange-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/orange-2.jpg",
-},
-{
-id: "tisse-noir",
-color: "Noir",
-image: "/images/decoration/set-table-tisse/noir-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/noir-2.jpg",
-},
-{
-id: "tisse-multicolore",
-color: "Multicolore",
 image: "/images/decoration/set-table-tisse/multicolore-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/multicolore-2.jpg",
-},
-{
-id: "tisse-carre-violet",
-color: "Carré violet",
-image: "/images/decoration/set-table-tisse/carre-violet-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/carre-violet-2.jpg",
-},
-],
-
-image: "/images/decoration/set-table-tisse/multicolore-1.jpg",
-imageHover: "/images/decoration/set-table-tisse/multicolore-2.jpg",
-},
-
-// SAC 1 - Kanto Terra (anse cuir)
-{
-id: "sac_kanto_terra",
-slug: "sac-raphia-fait-main-kanto-terra",
-name: "Sac en raphia fait main - Kanto Terra",
-price: 70,
-category: "Sacs & accessoires",
-tags: ["sac raphia", "fait main", "madagascar","sac été"],
-description:
-"Sac en raphia fait main à Madagascar avec anse en cuir. Léger, naturel et élégant, idéal pour un usage quotidien ou estival.",
-badges: ["Nouveauté", "Stock limité"], 
-
-variants: [
-{
-id: "terra-clair",
-color: "Marron clair",
-image: "/images/sacs/terra-clair.png",
-},
-{
-id: "terra-fonce",
-color: "Marron foncé",
-image: "/images/sacs/terra-fonce.png",
-},
-],
-
-image: "/images/sacs/terra-clair.png",
-},
-
-// SAC 2 - Kanto Ravo (anse raphia)
-{
-id: "sac_kanto_ravo",
-slug: "sac-raphia-souple-kanto-ravo",
-name: "Sac en raphia souple fait main - Kanto Ravo",
-price: 65,
-category: "Sacs & accessoires",
-tags: ["raphia", "souple", "fait main"],
-description:
-"Sac en raphia souple avec anse tressée, léger et pratique au quotidien.",
-badges: ["Nouveauté", "Stock limité"], 
-
-variants: [
-{
-id: "ravo-clair",
-color: "Marron clair",
-image: "/images/sacs/ravo-clair.png",
-},
-{
-id: "ravo-fonce",
-color: "Marron foncé",
-image: "/images/sacs/ravo-fonce.png",
-},
-],
-
-image: "/images/sacs/ravo-clair.png",
-},
-
-// SAC 3 - Kanto Lova
-{
-id: "sac_kanto_lova",
-slug: "sac-raphia-design-kanto-lova",
-name: "Sac en raphia design fait main - Kanto Lova",
-price: 89,
-category: "Sacs & accessoires",
-tags: ["raphia", "design", "fait main"],
-description:
-"Sac en raphia design fait main à Madagascar.Pièce unique, élégante et structurée, parfaite pour un style naturel et chic.",
-
-variants: [
-{
-id: "lova-clair",
-color: "Marron clair",
-image: "/images/sacs/lova-clair.png",
-},
-{
-id: "lova-fonce",
-color: "Marron foncé",
-image: "/images/sacs/lova-fonce.png",
-},
-],
-
-image: "/images/sacs/lova-clair.png",
 },
 
 // BIJOUX CORNE DE ZÉBU
@@ -193,7 +139,7 @@ image: "/images/sacs/lova-clair.png",
 {
 id: "bijoux_zebu_goutte",
 slug: "boucles-goutte-zebu",
-name: "Boucles goutte en corne de zébu",
+name: "Boucles Goutte - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -216,7 +162,7 @@ image: "/images/bijoux/zebu/goutte-jaune.png",
 {
 id: "bijoux_zebu_feuille",
 slug: "boucles-feuille-zebu",
-name: "Boucles feuille en corne de zébu",
+name: "Boucles Feuille - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -239,7 +185,7 @@ image: "/images/bijoux/zebu/feuille-jaune.png",
 {
 id: "bijoux_zebu_trapeze",
 slug: "boucles-trapeze-zebu",
-name: "Boucles trapèze en corne de zébu",
+name: "Boucles Trapèze - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -262,7 +208,7 @@ image: "/images/bijoux/zebu/trapeze-jaune.png",
 {
 id: "bijoux_zebu_carre",
 slug: "boucles-carre-zebu",
-name: "Boucles carré en corne de zébu",
+name: "Boucles Carré - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -285,7 +231,7 @@ image: "/images/bijoux/zebu/carre-jaune.png",
 {
 id: "bijoux_zebu_rectangle",
 slug: "boucles-rectangle-zebu",
-name: "Boucles rectangle en corne de zébu",
+name: "Boucles Rectangle - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -308,7 +254,7 @@ image: "/images/bijoux/zebu/rectangle-jaune.png",
 {
 id: "bijoux_zebu_rond",
 slug: "boucles-rond-zebu",
-name: "Boucles rondes en corne de zébu",
+name: "Boucles Rondes - corne de zébu",
 price: 12.9,
 category: "Bijoux",
 tags: ["boucles", "zébu", "fait main"],
@@ -341,7 +287,7 @@ short: "Gousse premium · 16 cm",
 material: "Vanille Bourbon",
 dimensions: "16 cm",
 bundle: { qty: 5, price: 18 },
-image: "/images/epices/vanille-16cm.png",
+image: "/images/epices/vanille-16-cm.png",
 },
 
 // VANILLE 14 CM
@@ -358,7 +304,7 @@ short: "Format découverte · 14 cm",
 material: "Vanille Bourbon",
 dimensions: "14 cm",
 bundle: { qty: 5, price: 15 },
-image: "/images/epices/vanille-14cm.png",
+image: "/images/epices/vanille-14-cm.png",
 }, 
 // POIVRE SAUVAGE
 {
@@ -411,146 +357,147 @@ image: "/images/epices/pack-madagascar.png",
 {
   id: "bijou_nosykanto_cloche",
   slug: "boucles-cloche-nosy-kanto",
-  name: "Boucles cloche Nosy Kanto",
+  name: "Boucles Sélène",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
-  short: "Acier inoxydable · Pierres naturelles",
+  short: "Pierres naturelles . Acier inoxydable",
   material: "Acier inoxydable & pierres naturelles",
   image: "/images/nosykanto/boucle-cloche.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierres naturelles. Création exclusive Nosy Kanto.",
+  description:  "Boucles Sélène faites main à Madagascar. Leur silhouette délicate associe l’acier inoxydable aux pierres naturelles pour un bijou élégant et lumineux. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_feuille",
   slug: "boucles-feuille-nosy-kanto",
-  name: "Boucles feuille Nosy Kanto",
+  name: "Boucles Alizée",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
-  short: "Acier inoxydable · Pierres naturelles",
+  short: "Pierres naturelles . Acier inoxydable",
   material: "Acier inoxydable & pierres naturelles",
-  image: "/images/nosykanto/boucles-feuille.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierres naturelles. Création exclusive Nosy Kanto.",
+  image: "/images/nosykanto/boucles-feuille-or.png",
+  description:  "Inspirées par la nature malgache, les boucles Alizée sont réalisées à la main en acier inoxydable et pierres naturelles. Un bijou léger et raffiné, créé exclusivement pour Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_fleur_rose",
   slug: "boucles-fleur-rose-nosy-kanto",
-  name: "Boucles fleur rose Nosy Kanto",
+  name: "Boucles Pivoine",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
-  short: "Acier inoxydable · Pierres naturelles",
+  short: "Pierres naturelles . Acier inoxydable",
   material: "Acier inoxydable & pierres naturelles",
   image: "/images/nosykanto/boucles-fleur-rose.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierres naturelles. Création exclusive Nosy Kanto.",
+  description: "Délicates et féminines, les boucles Pivoine sont confectionnées à la main à Madagascar en acier inoxydable et pierres naturelles. Une création florale exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_jaspe",
   slug: "boucles-jaspe-nosy-kanto",
-  name: "Boucles jaspe Nosy Kanto",
+  name: "Boucles Sienna",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "jaspe", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
-  short: "Jaspe · Acier inoxydable",
+  short: "Jaspe naturel · Acier inoxydable",
   material: "Acier inoxydable & jaspe",
   image: "/images/nosykanto/boucles-jaspe.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierre naturelle jaspe. Création exclusive Nosy Kanto.",
+  description:  "Chaleureuses et élégantes, les boucles Sienna associent l’acier inoxydable au jaspe naturel. Réalisées à la main à Madagascar, elles apportent une touche authentique et raffinée. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_maya",
   slug: "boucles-maya-nosy-kanto",
-  name: "Boucles Maya Nosy Kanto",
-  price: 24.9,
+  name: "Boucles Maya",
+  price: 24,
+  stock: 2,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
-  short: "Acier inoxydable · Pierres naturelles",
+  short: "Pierres naturelles . Acier inoxydable",
   material: "Acier inoxydable & pierres naturelles",
   image: "/images/nosykanto/boucles-maya.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierres naturelles. Création exclusive Nosy Kanto.",
+  description: "Les boucles Maya associent pierres naturelles et acier inoxydable dans une création délicate réalisée à la main à Madagascar. Un bijou original et lumineux, exclusif à Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_perle_rose",
   slug: "boucles-perle-rose-nosy-kanto",
-  name: "Boucles perle rose Nosy Kanto",
+  name: "Boucles Rosalie",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "perle", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
   short: "Perle rose · Acier inoxydable",
   material: "Acier inoxydable & perle",
   image: "/images/nosykanto/boucles-perle-rose.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec perle naturelle. Création exclusive Nosy Kanto.",
+  description:  "Douces et lumineuses, les boucles Rosalie associent une délicate perle rose à l’acier inoxydable. Confectionnées à la main à Madagascar, elles apportent une touche élégante et féminine. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_perles_coquillage",
   slug: "boucles-perles-coquillage-nosy-kanto",
-  name: "Boucles perles coquillage Nosy Kanto",
+  name: "Boucles Lagune",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "perles", "coquillage", "acier inoxydable", "fait main", "madagascar"],
-  short: "Perles · Coquillage",
+  short: "Perles · Coquillage . Acier inoxydable",
   material: "Acier inoxydable, perles & coquillage",
   image: "/images/nosykanto/boucles-perles-coquillage.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec perles et coquillage. Création exclusive Nosy Kanto.",
+  description:  "Inspirées par l’océan, les boucles Lagune mêlent perles et coquillage à l’acier inoxydable. Réalisées à la main à Madagascar, elles apportent une touche naturelle et solaire. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_violet",
   slug: "boucles-violet-nosy-kanto",
-  name: "Boucles violet Nosy Kanto",
+  name: "Boucles Améthyste",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
   short: "Pierre violette · Acier inoxydable",
   material: "Acier inoxydable & pierre naturelle",
   image: "/images/nosykanto/boucles-violet.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierre naturelle violette. Création exclusive Nosy Kanto.",
+  description:  "Les boucles Améthyste associent une pierre naturelle aux nuances violettes à l’acier inoxydable. Confectionnées à la main à Madagascar, elles offrent une allure élégante et colorée. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_perles_blanc",
   slug: "boucles-perles-blanches-nosy-kanto",
-  name: "Boucles perles blanches Nosy Kanto",
+  name: "Boucles Ivoire",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "perles", "acier inoxydable", "fait main", "madagascar"],
   short: "Perles blanches · Acier inoxydable",
   material: "Acier inoxydable & perles",
   image: "/images/nosykanto/boucles-perles-blanc.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec perles blanches. Création exclusive Nosy Kanto.",
+  description: "Élégantes et lumineuses, les boucles Ivoire associent des perles blanches à l’acier inoxydable. Réalisées à la main à Madagascar, elles offrent un style délicat et intemporel. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_perles_noir",
   slug: "boucles-perles-noires-nosy-kanto",
-  name: "Boucles perles noires Nosy Kanto",
+  name: "Boucles Ebène",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "perles", "acier inoxydable", "fait main", "madagascar"],
   short: "Perles noires · Acier inoxydable",
   material: "Acier inoxydable & perles",
   image: "/images/nosykanto/boucles-perles-noir.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec perles noires. Création exclusive Nosy Kanto.",
+  description: "Élégantes et contrastées, les boucles Ébène associent des perles noires à l’acier inoxydable. Réalisées à la main à Madagascar, elles apportent une touche chic et intemporelle. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_perles",
   slug: "boucles-perles-nosy-kanto",
-  name: "Boucles perles Nosy Kanto",
+  name: "Boucles Eclat",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "perles", "acier inoxydable", "fait main", "madagascar"],
   short: "Perles · Acier inoxydable",
   material: "Acier inoxydable & perles",
   image: "/images/nosykanto/boucles-perles.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec perles. Création exclusive Nosy Kanto.",
+  description:  "Délicates et lumineuses, les boucles Éclat associent des perles à l’acier inoxydable. Confectionnées à la main à Madagascar, elles offrent une élégance naturelle facile à porter. Création exclusive Nosy Kanto.",
 },
 {
   id: "bijou_nosykanto_rose",
   slug: "boucles-rose-nosy-kanto",
-  name: "Boucles rose Nosy Kanto",
+  name: "Boucles Azalée",
   price: 24.9,
   category: "Bijoux",
   tags: ["bijoux nosy kanto", "acier inoxydable", "pierres naturelles", "fait main", "madagascar"],
   short: "Pierre rose · Acier inoxydable",
   material: "Acier inoxydable & pierre naturelle",
   image: "/images/nosykanto/boucles-rose.png",
-  description: "Boucles faites main à Madagascar en acier inoxydable avec pierre naturelle rose. Création exclusive Nosy Kanto.",
+  description: "Les boucles Azalée associent une pierre naturelle aux nuances roses à l’acier inoxydable. Réalisées à la main à Madagascar, elles apportent une touche douce et colorée. Création exclusive Nosy Kanto.",
 },
 
 ];

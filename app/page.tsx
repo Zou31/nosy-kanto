@@ -1,5 +1,7 @@
 import Hero from "./components/home/Hero";
+import Univers from "./components/home/Univers";
 import Products from "./components/home/Products";
+import Engagements from "./components/home/Engagements";
 
 export default function Home() {
   return (
@@ -9,7 +11,10 @@ export default function Home() {
       </div>
 
       <Hero />
+      <Univers />
       <Products />
+      <Engagements />
+
     </main>
   );
 }

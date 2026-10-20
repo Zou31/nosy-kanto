@@ -2,79 +2,106 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { PRODUCTS } from "../../data/products";
+import { useERP } from "../../context/ERPContext";
 
 export default function Products() {
+
+const { products } = useERP();
+
   return (
     <section className="py-12">
       {/* Titre section */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <Link
-  href="/bijoux-kanto"
-  className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 hover:bg-amber-200 transition"
+      <div className="relative mb-9 text-center">
+  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+    Nos coups de cœur
+  </p>
+
+  <h2 className="mt-3 text-3xl font-bold text-[#4A2B1A] md:text-4xl">
+    Sélection du moment
+  </h2>
+
+  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-neutral-600">
+    Quelques pièces choisies pour découvrir l&apos;univers Nosy Kanto.
+  </p>
+
+ <Link
+  href="/boutique"
+  className="mt-4 inline-flex text-sm font-semibold text-[#4A2B1A] transition hover:text-[#DAA520]"
 >
-  Nouveautés
+  Voir toute la boutique →
 </Link>
 
-          <h2 className="mt-2 text-2xl font-bold text-[#4A2B1A]">
-            Sélection du moment
-          </h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            Quelques pièces choisies pour découvrir l&apos;univers Nosy Kanto.
-          </p>
-        </div>
-
-        <Link
-          href="/boutique"
-          className="hidden text-sm font-medium text-[#4A2B1A] underline-offset-4 hover:text-[#DAA520] hover:underline sm:inline-block"
-        >
-          Voir toute la boutique →
-        </Link>
-      </div>
+</div>
 
       {/* Grille produits */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {PRODUCTS.filter((product) =>
-          ["vanille_16cm", "vanille_14cm", "sac_kanto_terra"].includes(product.id)
-        ).map((product) => (
-          <Link
-            key={product.slug}
-            href={`/produit/${product.slug}`}
-            className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-          >
-            <div className="relative overflow-hidden">
-              <Image
-                 src={product.image}
-                 alt={product.name}
-                 width={400}
-                 height={500}
-                 className="h-44 w-full object-contain bg-white p-4 sm:h-64"
-               /> 
+       {products
+  .filter(
+    (product) =>
+      product.status === "En vente" &&
+      [
+  "NK-SAC-TERRA",
+  "NK-ACC-KELY-SISAL",
+  "NK-EPI-VAN-16",
+].includes(product.referenceCode ?? "")
 
-              {product.imageHover && (
-                <Image
-              src={product.imageHover}
-            alt={product.name}
-          width={400}
-          height={500}
-          className="absolute inset-0 h-44 w-full object-contain bg-white p-4 sm:h-64 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        />
-        )}
-            </div>
+  )
+  .map((product) => (
 
-            <div className="p-4">
-              <h3 className="text-base font-semibold text-neutral-900 group-hover:text-[#DAA520]">
-                {product.name}
-              </h3>
-              <p className="mt-2 text-lg font-semibold text-[#DAA520]">
-                {product.price.toFixed(2).replace(".",",")} €
-              </p>
-              <p className="mt-1 text-xs text-neutral-500">
-                Série limitée · Artisanat fait main
-              </p>
-            </div>
-          </Link>
+         <Link
+  key={product.slug}
+  href={`/produit/${product.slug}`}
+  className="group block overflow-hidden rounded-[24px] border border-[#E8DED2] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+>
+  {/* Photo */}
+  <div className="relative aspect-[3/2] overflow-hidden bg-[#F8F4EE]">
+    <Image
+      src={product.image}
+      alt={product.name}
+      fill
+      className="object-contain p-5 transition duration-500 group-hover:scale-[1.03]"
+      sizes="(max-width: 640px) 100vw, 33vw"
+    />
+
+    {product.imageHover && (
+      <Image
+        src={product.imageHover}
+        alt={product.name}
+        fill
+        className="object-contain p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        sizes="(max-width: 640px) 100vw, 33vw"
+      />
+    )}
+
+    <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4A2B1A] shadow-sm">
+      {product.category}
+    </div>
+  </div>
+
+  {/* Informations */}
+  <div className="p-5">
+    <h3 className="text-lg font-semibold leading-snug text-[#4A2B1A] transition group-hover:text-[#DAA520]">
+      {product.name}
+    </h3>
+
+    {product.short && (
+      <p className="mt-2 line-clamp-2 text-sm leading-5 text-neutral-500">
+        {product.short}
+      </p>
+    )}
+
+    <div className="mt-5 flex items-end justify-between gap-4 border-t border-[#EEE6DD] pt-4">
+      <p className="text-xl font-bold text-[#B8860B]">
+        {product.price.toFixed(2).replace(".", ",")} €
+      </p>
+
+      <span className="text-sm font-semibold text-[#4A2B1A] transition group-hover:text-[#DAA520]">
+        Découvrir →
+      </span>
+    </div>
+  </div>
+</Link>
+
         ))}
       </div>
 

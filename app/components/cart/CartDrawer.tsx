@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_PRODUCT_IMAGE } from "../../data/products";
+import { useERP } from "../../context/ERPContext";
 
 const EUR = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
@@ -17,6 +18,7 @@ export default function CartDrawer({
   onClose: () => void;
 }) {
   const { items, totalItems, totalPrice, removeItem, clearCart, updateQty } = useCart();
+  const { stock } = useERP();
   const [imgFallback, setImgFallback] = useState<Record<string, boolean>>({});
 
   const canCheckout = items.length > 0;
@@ -51,16 +53,44 @@ export default function CartDrawer({
   };
 
   const lines = useMemo(() => {
-    return items.map((item) => {
-      const key = `${item.id}-${item.color ?? ""}-${item.size ?? ""}`;
-      const img = imgFallback[key] ? DEFAULT_PRODUCT_IMAGE : item.image || DEFAULT_PRODUCT_IMAGE;
-      const unit = Number(item.price) || 0;
-      const qty = Math.max(1, Number(item.qty) || 1);
-      const lineTotal = unit * qty;
+  return items.map((item) => {
+    const key = `${item.id}-${item.color ?? ""}-${item.size ?? ""}`;
+    const img = imgFallback[key]
+      ? DEFAULT_PRODUCT_IMAGE
+      : item.image || DEFAULT_PRODUCT_IMAGE;
 
-      return { item, key, img, unit, qty, lineTotal };
-    });
-  }, [items, imgFallback]);
+    const unit = Number(item.price) || 0;
+    const qty = Math.max(1, Number(item.qty) || 1);
+
+    const availableStock = stock
+      .filter(
+        (stockItem) =>
+          stockItem.productId === item.id &&
+          (
+            item.variantId
+              ? stockItem.variantId === item.variantId
+              : true
+          )
+      )
+      .reduce(
+        (total, stockItem) =>
+          total + stockItem.quantity,
+        0
+      );
+
+    const lineTotal = unit * qty;
+
+    return {
+      item,
+      key,
+      img,
+      unit,
+      qty,
+      availableStock,
+      lineTotal,
+    };
+  });
+}, [items, imgFallback, stock]);
 
   if (!open) return null;
 
@@ -102,7 +132,7 @@ export default function CartDrawer({
           {lines.length === 0 ? (
             <p className="text-sm text-neutral-600">Votre panier est vide.</p>
           ) : (
-            lines.map(({ item, key, img, unit, qty, lineTotal }) => (
+            lines.map(({ item, key, img, unit, qty, availableStock, lineTotal }) => (
               <div key={key} className="rounded-2xl border border-neutral-200 p-4">
                 <div className="flex gap-4">
                   {/* Image */}
@@ -155,7 +185,14 @@ export default function CartDrawer({
                           type="button"
                           disabled={item.qty <= 1}
                           onClick={() =>
-                            updateQty(item.id, Math.max(1, item.qty - 1), item.color, item.size)
+                           updateQty(
+                             item.id,
+                             Math.max(1, item.qty - 1),
+                             item.color,
+                             item.size,
+                             item.variantId
+                            )
+
                           }
                           className="px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
                           aria-label="Diminuer la quantité"
@@ -166,15 +203,24 @@ export default function CartDrawer({
                         <span className="px-4 py-2 text-sm">{qty}</span>
 
                         <button
-                          type="button"
-                          onClick={() =>
-                            updateQty(item.id, Math.min(99, qty + 1), item.color, item.size)
-                          }
-                          className="px-3 py-2 text-sm hover:bg-neutral-50"
-                          aria-label="Augmenter la quantité"
+                           type="button"
+                           disabled={qty >= availableStock}
+                           onClick={() =>
+                          updateQty(
+                             item.id,
+                             Math.min(availableStock, qty + 1),
+                             item.color,
+                             item.size,
+                             item.variantId
+                            )
+
+                        }
+                         className="px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                         aria-label="Augmenter la quantité"
                         >
-                          +
+                           +
                         </button>
+
                       </div>
 
                       <div className="ml-auto text-sm font-semibold text-[#DAA520]">

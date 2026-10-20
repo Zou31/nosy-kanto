@@ -3,7 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
-import { DEFAULT_PRODUCT_IMAGE, PRODUCTS } from "../data/products";
+import { DEFAULT_PRODUCT_IMAGE } from "../data/products";
+import type { Product } from "../data/products";
+import { useERP } from "../context/ERPContext";
 import { useCart } from "../context/CartContext";
 
 type SortKey = "featured" | "price_asc" | "price_desc";
@@ -12,12 +14,41 @@ function formatEUR(price: number) {
   return Number(price).toFixed(2).replace(".", ",") + " €";
 }
 
-function ProductCard({ product }: { product: (typeof PRODUCTS)[number] }) {
+function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { stock } = useERP();
   const [added, setAdded] = useState(false);
 
   // Variante par défaut = 1ère variante si elle existe
   const firstVariant = product.variants?.[0];
+  const firstVariantStock = stock
+  .filter(
+    (item) =>
+      item.productId === product.id &&
+      item.variantId === firstVariant?.id
+  )
+  .reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+  const isOutOfStock = firstVariantStock <= 0;
+
+  const totalProductStock = stock
+  .filter(
+    (item) =>
+      item.productId === product.id
+  )
+  .reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+const isProductOutOfStock =
+  totalProductStock <= 0;
+
+const hasOtherAvailableVariant =
+  isOutOfStock && !isProductOutOfStock;
 
   const img1 = firstVariant?.image || product.image || DEFAULT_PRODUCT_IMAGE;
   const img2 = firstVariant?.imageHover || product.imageHover;
@@ -26,32 +57,57 @@ function ProductCard({ product }: { product: (typeof PRODUCTS)[number] }) {
   // size par défaut (si tu veux) — sinon enlève la ligne
   const quickSize = undefined;
 
+  const quickStock = firstVariant
+  ? firstVariantStock
+  : totalProductStock;
+
   const onQuickAdd = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
+      if (hasOtherAvailableVariant) {
+  return;
+}
+
+e.preventDefault();
+e.stopPropagation();
+
+if (isProductOutOfStock) {
+  return;
+}
 
       addItem({
         id: product.id,
+        variantId: firstVariant?.id,
         name: product.name,
         price: product.price,
         image: img1,
         qty: 1,
         color: quickColor,
         size: quickSize,
+        stock: quickStock,
       });
 
       setAdded(true);
       window.setTimeout(() => setAdded(false), 900);
     },
-    [addItem, product.id, product.name, product.price, img1, quickColor]
+    [
+  addItem,
+  product.id,
+  product.name,
+  product.price,
+  img1,
+  quickColor,
+  isProductOutOfStock,
+  hasOtherAvailableVariant,
+  quickStock,
+]
+
   );
 
   return (
     <Link href={`/produit/${product.slug}`} className="group block">
       <div className="rounded-2xl overflow-hidden bg-white border border-neutral-200 transition hover:shadow-lg">
         {/* Image */}
-        <div className="relative aspect-[4/5] bg-white overflow-hidden">
+       <div className="relative aspect-square sm:aspect-[4/5] bg-white overflow-hidden">
           {/* image 1 */}
           <Image
             src={img1}
@@ -91,13 +147,26 @@ function ProductCard({ product }: { product: (typeof PRODUCTS)[number] }) {
           {/* Quick add */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3">
             <button
-              type="button"
-              onClick={onQuickAdd}
-              className="pointer-events-auto w-full rounded-xl bg-black/90 py-3 text-sm font-medium text-white backdrop-blur transition
-                         opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-black"
-            >
-              {added ? "Ajouté ✓" : "Ajouter au panier"}
-            </button>
+  type="button"
+  onClick={onQuickAdd}
+  disabled={isProductOutOfStock}
+  className={`pointer-events-auto w-full rounded-xl py-3 text-sm font-medium text-white backdrop-blur transition ${
+    isProductOutOfStock
+      ? "cursor-not-allowed bg-neutral-400 opacity-100 translate-y-0"
+      : hasOtherAvailableVariant
+      ? "bg-[#8A5A3B] opacity-100 translate-y-0 hover:bg-[#6F452E]"
+      : "bg-black/90 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-black"
+  }`}
+>
+  {isProductOutOfStock
+    ? "Rupture de stock"
+    : hasOtherAvailableVariant
+    ? "Voir les variantes"
+    : added
+    ? "Ajouté ✓"
+    : "Ajouter au panier"}
+</button>
+
           </div>
         </div>
 
@@ -135,20 +204,34 @@ function ProductCard({ product }: { product: (typeof PRODUCTS)[number] }) {
 }
 
 export default function BoutiqueClient() {
+  const { products } = useERP();
+
+const productsForSale = useMemo(
+  () =>
+    products.filter(
+      (product) => product.status === "En vente"
+    ),
+  [products]
+);
   const categories = useMemo(() => {
-    const set = new Set(PRODUCTS.map((p) => p.category));
+    const set = new Set(
+  productsForSale.map((p) => p.category)
+);
+
     return ["Tous", ...Array.from(set)];
-  }, []);
+  }, [productsForSale]);
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("Tous");
   const [sort, setSort] = useState<SortKey>("featured");
 
   const filtered = useMemo(() => {
-   let base =
+    let base =
   category === "Tous"
-    ? PRODUCTS.filter((p) => !p.tags.includes("bijoux nosy kanto"))
-    : PRODUCTS.filter(
+    ? productsForSale.filter(
+        (p) => !p.tags.includes("bijoux nosy kanto")
+      )
+    : productsForSale.filter(
         (p) =>
           p.category === category &&
           !p.tags.includes("bijoux nosy kanto")
@@ -169,7 +252,12 @@ export default function BoutiqueClient() {
     if (sort === "price_desc") sorted.sort((a, b) => b.price - a.price);
 
     return sorted;
-  }, [category, sort, query]);
+ }, [
+  category,
+  sort,
+  query,
+  productsForSale,
+]);
 
   const hasFilters = query.trim() || category !== "Tous" || sort !== "featured";
 

@@ -22,6 +22,10 @@ export default function CommandePage() {
     country: "France",
   });
 
+  const [deliveryMode, setDeliveryMode] = useState<
+  "home" | "relay"
+>("home");
+
   const hasItems = items.length > 0;
 
 
@@ -41,7 +45,7 @@ export default function CommandePage() {
     );
   }
 
-  const paymentEnabled = false; // ✅ mets à true quand PayPal sera branché
+  const paymentEnabled = false; // PayPal pas encore branché
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-16">
@@ -156,13 +160,72 @@ export default function CommandePage() {
                 onChange={(v) => setCustomer((c) => ({ ...c, zip: v }))}
               />
               <div className="sm:col-span-2">
-                <Field
-                  label="Pays"
-                  value={customer.country}
-                  onChange={(v) => setCustomer((c) => ({ ...c, country: v }))}
-                />
-              </div>
+  <label className="block">
+    <span className="text-xs font-medium text-neutral-700">
+      Pays de livraison
+    </span>
+
+    <select
+      value={customer.country}
+      onChange={(e) =>
+        setCustomer((c) => ({
+          ...c,
+          country: e.target.value,
+        }))
+      }
+      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:border-black"
+    >
+      <option value="France">France métropolitaine</option>
+      <option value="Belgique">Belgique</option>
+      <option value="Luxembourg">Luxembourg</option>
+      <option value="Allemagne">Allemagne</option>
+      <option value="Espagne">Espagne</option>
+      <option value="Italie">Italie</option>
+      <option value="Portugal">Portugal</option>
+      <option value="Pays-Bas">Pays-Bas</option>
+      <option value="Autriche">Autriche</option>
+      <option value="Irlande">Irlande</option>
+      <option value="Danemark">Danemark</option>
+      <option value="Suède">Suède</option>
+      <option value="Finlande">Finlande</option>
+      <option value="Grèce">Grèce</option>
+    </select>
+  </label>
+</div>
+
             </div>
+            <div className="sm:col-span-2">
+  <p className="text-xs font-medium text-neutral-700">
+    Mode de livraison
+  </p>
+
+  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+    <label className="flex items-center gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
+      <input
+        type="radio"
+        name="deliveryMode"
+        checked={deliveryMode === "home"}
+        onChange={() => setDeliveryMode("home")}
+      />
+      <span className="text-sm">🏠 À domicile</span>
+    </label>
+
+    <label className="flex items-center gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
+      <input
+        type="radio"
+        name="deliveryMode"
+        checked={deliveryMode === "relay"}
+        onChange={() => setDeliveryMode("relay")}
+      />
+      <span className="text-sm">📦 En point relais</span>
+    </label>
+  </div>
+
+  <p className="mt-2 text-xs text-neutral-500">
+    Les transporteurs, points relais et tarifs disponibles
+    seront proposés avant le paiement.
+  </p>
+</div>
 
             <p className="mt-4 text-xs text-neutral-500">
               (Pour l’instant ces infos ne sont pas enregistrées — on le branchera quand on mettra le paiement.)

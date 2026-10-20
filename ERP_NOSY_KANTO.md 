@@ -1,0 +1,58 @@
+# ERP Nosy Kanto
+
+## Objectif
+
+L'ERP Nosy Kanto est le système central de gestion de l'entreprise.
+
+Il permet de gérer :
+
+- le catalogue produits ;
+- les référentiels ;
+- les fournisseurs ;
+- les artisans partenaires ;
+- les achats ;
+- le stock ;
+- les médias (photos, vidéos, documents) ;
+- la publication vers le site e-commerce.
+
+Le site internet n'est pas la source des données.
+
+L'ERP est la source unique de toutes les informations.
+
+---
+
+## 1. Principes de fonctionnement
+
+### Une seule source de vérité
+
+Chaque information doit être enregistrée une seule fois dans l'ERP.
+
+Exemples :
+
+- un artisan ;
+- un fournisseur ;
+- une matière ;
+- une couleur ;
+- une collection ;
+- un modèle.
+
+Les autres parties de l'ERP utilisent ces informations sans les recopier.
+
+### L'ERP est le cœur du système
+
+L'ERP centralise les informations de Nosy Kanto.
+
+Le site e-commerce utilise les données de l'ERP, mais il ne les crée pas directement.
+
+### Archivage
+
+Les anciennes informations ne sont pas supprimées définitivement.
+
+Elles sont archivées afin de conserver l'historique de Nosy Kanto.
+
+
+
+
+
+
+

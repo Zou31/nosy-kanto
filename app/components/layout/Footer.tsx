@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="mt-16 bg-[#4A2B1A] text-white">
+    <footer className="bg-[#4A2B1A] text-white">
       <div className="mx-auto max-w-6xl px-6 py-10 grid gap-8 sm:grid-cols-2 md:grid-cols-4">
 
         {/* MARQUE */}
@@ -37,6 +37,14 @@ export default function Footer() {
           <h4 className="text-sm font-semibold mb-2">Légal</h4>
           <ul className="space-y-2 text-sm text-white/80">
             <li><Link href="/cgv" className="hover:text-[#DAA520]">CGV</Link></li>
+
+             <li>
+               <Link href="/retractation" className="hover:text-[#DAA520]">
+                 Se rétracter
+               </Link>
+              </li>
+
+
             <li><Link href="/confidentialite" className="hover:text-[#DAA520]">Confidentialité</Link></li>
             <li><Link href="/cookies" className="hover:text-[#DAA520]">Cookies</Link></li>
           </ul>

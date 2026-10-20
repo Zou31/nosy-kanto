@@ -136,7 +136,8 @@ export default function PanierPage() {
                               item.id,
                               Math.max(1, qty - 1),
                               item.color,
-                              item.size
+                              item.size,
+                              item.variantId
                             )
                           }
                           className="px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -152,9 +153,10 @@ export default function PanierPage() {
                           onClick={() =>
                             updateQty(
                               item.id,
-                              Math.min(99, qty + 1),
+                              qty + 1,
                               item.color,
-                              item.size
+                              item.size,
+                              item.variantId
                             )
                           }
                           className="px-3 py-2 text-sm hover:bg-neutral-50"

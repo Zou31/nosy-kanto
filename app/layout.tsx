@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import { CartProvider } from "./context/CartContext";
+import { ERPProvider } from "./context/ERPContext";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -32,17 +33,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+const paypalEnabled =
+  paypalClientId &&
+  paypalClientId !== "xxx";
 
   return (
     <html lang="fr">
       <body>
-        <CartProvider>
-          <Header />
-          {children}
-          <Footer />
-        </CartProvider>
+       <ERPProvider>
+  <CartProvider>
+    <Header />
+    {children}
+    <Footer />
+  </CartProvider>
+</ERPProvider>
 
-        {paypalClientId && (
+        {paypalEnabled && (
+
           <Script
             src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=EUR`}
             strategy="afterInteractive"

@@ -11,7 +11,7 @@ declare global {
 
 export default function PayPalButton() {
   const paypalRef = useRef<HTMLDivElement>(null);
-  const { totalPrice, clearCart } = useCart();
+  const { items, clearCart } = useCart();
 
   useEffect(() => {
     if (!window.paypal || !paypalRef.current) return;
@@ -28,7 +28,14 @@ export default function PayPalButton() {
         const res = await fetch("/api/paypal/create-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ total: totalPrice }),
+          body: JSON.stringify({
+  items: items.map((item) => ({
+    id: item.id,
+    variantId: item.variantId,
+    qty: item.qty,
+  })),
+}),
+
         });
 
         const data = await res.json();
@@ -55,7 +62,7 @@ export default function PayPalButton() {
         alert("Une erreur est survenue avec PayPal");
       },
     }).render(paypalRef.current);
-  }, [totalPrice, clearCart]);
+  }, [items, clearCart]);
 
   return <div ref={paypalRef} />;
 }

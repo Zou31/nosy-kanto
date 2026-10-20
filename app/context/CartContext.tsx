@@ -4,12 +4,14 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 
 export type CartItem = {
   id: string; // product.id
+  variantId?: string;
   name: string;
   price: number;
   qty: number;
   image?: string;
   color?: string;
   size?: string;
+  stock: number;
 };
 
 type AddItemInput = Omit<CartItem, "qty"> & { qty?: number };
@@ -20,8 +22,21 @@ type CartContextValue = {
   totalPrice: number;
 
   addItem: (item: AddItemInput) => void;
-  updateQty: (id: string, qty: number, color?: string, size?: string) => void;
-  removeItem: (id: string, color?: string, size?: string) => void;
+  updateQty: (
+  id: string,
+  qty: number,
+  color?: string,
+  size?: string,
+  variantId?: string
+) => void;
+
+removeItem: (
+  id: string,
+  color?: string,
+  size?: string,
+  variantId?: string
+) => void;
+
   clearCart: () => void;
 
   // Drawer control
@@ -32,9 +47,27 @@ type CartContextValue = {
 
 const STORAGE_KEY = "nk_cart_v1";
 
-function sameLine(a: CartItem, b: { id: string; color?: string; size?: string }) {
+function sameLine(
+  a: CartItem,
+  b: {
+    id: string;
+    variantId?: string;
+    color?: string;
+    size?: string;
+  }
+) {
+  if (a.id !== b.id) {
+    return false;
+  }
+
+  if (a.variantId || b.variantId) {
+    return (
+      (a.variantId ?? "") === (b.variantId ?? "") &&
+      (a.size ?? "") === (b.size ?? "")
+    );
+  }
+
   return (
-    a.id === b.id &&
     (a.color ?? "") === (b.color ?? "") &&
     (a.size ?? "") === (b.size ?? "")
   );
@@ -102,44 +135,90 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeCart = () => setIsCartOpen(false);
 
   const addItem: CartContextValue["addItem"] = (item) => {
-    setItems((prev) => {
-      const qtyToAdd = clampQty(item.qty, 1);
-      if (qtyToAdd <= 0) return prev;
+  setItems((prev) => {
+    const stock = item.stock ?? 0;
+    const qtyToAdd = clampQty(item.qty, 1);
 
-      const idx = prev.findIndex((it) => sameLine(it, { id: item.id, color: item.color, size: item.size }));
-      if (idx >= 0) {
-        return prev.map((it, i) => (i === idx ? { ...it, qty: it.qty + qtyToAdd } : it));
-      }
+    if (qtyToAdd <= 0 || stock <= 0) return prev;
 
-      return [
-        ...prev,
-        {
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          color: item.color,
-          size: item.size,
-          qty: qtyToAdd,
-        },
-      ];
-    });
+    const idx = prev.findIndex((it) =>
+  sameLine(it, {
+    id: item.id,
+    variantId: item.variantId,
+    color: item.color,
+    size: item.size,
+  })
+);
 
-    // UX: quand on ajoute, on ouvre le drawer
-    setIsCartOpen(true);
-  };
+    if (idx >= 0) {
+      return prev.map((it, i) => {
+        if (i !== idx) return it;
 
-  const updateQty: CartContextValue["updateQty"] = (id, qty, color, size) => {
-    const safeQty = clampQty(qty, 0);
-    setItems((prev) => {
-      if (safeQty <= 0) return prev.filter((it) => !sameLine(it, { id, color, size }));
-      return prev.map((it) => (sameLine(it, { id, color, size }) ? { ...it, qty: safeQty } : it));
-    });
-  };
+        const newQty = Math.min(it.qty + qtyToAdd, stock);
 
-  const removeItem: CartContextValue["removeItem"] = (id, color, size) => {
-    setItems((prev) => prev.filter((it) => !sameLine(it, { id, color, size })));
-  };
+        return {
+          ...it,
+          qty: newQty,
+          stock,
+        };
+      });
+    }
+
+    return [
+      ...prev,
+      {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        color: item.color,
+        size: item.size,
+        qty: Math.min(qtyToAdd, stock),
+        stock,
+      },
+    ];
+  });
+
+  // UX: quand on ajoute, on ouvre le drawer
+  setIsCartOpen(true);
+};
+
+ const updateQty: CartContextValue["updateQty"] = (
+  id,
+  qty,
+  color,
+  size,
+  variantId
+) => {
+  setItems((prev) => {
+    return prev
+      .map((it) => {
+        if (!sameLine(it, { id, color, size, variantId })) return it;
+
+        const stock = it.stock ?? 0;
+        const safeQty = clampQty(qty, 0);
+        const finalQty = Math.min(safeQty, stock);
+
+        if (finalQty <= 0) return null;
+
+        return { ...it, qty: finalQty };
+      })
+      .filter((it): it is CartItem => it !== null);
+  });
+};
+
+  const removeItem: CartContextValue["removeItem"] = (
+  id,
+  color,
+  size,
+  variantId
+) => {
+  setItems((prev) =>
+    prev.filter(
+      (it) => !sameLine(it, { id, color, size, variantId })
+    )
+  );
+};
 
   const clearCart = () => setItems([]);
 

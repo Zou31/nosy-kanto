@@ -6,98 +6,249 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../../context/CartContext";
 import { DEFAULT_PRODUCT_IMAGE } from "../../data/products";
 import type { Product } from "../../data/products";
+import { useERP } from "../../context/ERPContext";
 
 function formatEUR(price: number) {
 return Number(price).toFixed(2).replace(".", ",") + " €";
 }
 
-export default function ProduitClient({ product }: { product: Product }) {
-const { addItem } = useCart();
+export default function ProduitClient({
+  slug,
+}: {
+  slug: string;
+}) {
+  const { products, stock, isLoading, loadError } = useERP();
+  const { addItem } = useCart();
 
-const hasVariants = (product.variants?.length ?? 0) > 0;
+  const product = products.find(
+    (item) => item.slug === slug
+  );
 
-const defaultVariant = useMemo(() => {
-return hasVariants ? product.variants![0] : undefined;
-}, [hasVariants, product.variants]);
+  const relatedProducts = products
+  .filter(
+    (item) =>
+      item.status === "En vente" &&
+      item.category === product?.category &&
+      item.id !== product?.id &&
+      item.collection !== product?.collection
+  )
+  .slice(0, 3);
 
-const [selectedVariantId, setSelectedVariantId] = useState<string>(
-defaultVariant?.id ?? ""
-);
+  const hasVariants =
+    (product?.variants?.length ?? 0) > 0;
 
-const [isAdding, setIsAdding] = useState(false);
+  const defaultVariant = useMemo(() => {
+    return hasVariants
+      ? product?.variants?.[0]
+      : undefined;
+  }, [hasVariants, product?.variants]);
 
-const [viewerCount, setViewerCount] = useState(8);
+  const [selectedVariantId, setSelectedVariantId] =
+    useState<string>(
+      defaultVariant?.id ?? ""
+    );
 
-useEffect(() => {
-setViewerCount(Math.floor(Math.random() * 6) + 7); // entre 7 et 12
+    const [selectedImage, setSelectedImage] =
+  useState<string | null>(null);
 
-const interval = window.setInterval(() => {
-setViewerCount(Math.floor(Math.random() * 6) + 7);
-}, 12000);
+  const [isAdding, setIsAdding] =
+    useState(false);
 
-return () => window.clearInterval(interval);
-}, []); 
+  const selectedVariant = useMemo(() => {
+    if (!hasVariants) return undefined;
 
-const selectedVariant = useMemo(() => {
-if (!hasVariants) return undefined;
-return product.variants!.find((v) => v.id === selectedVariantId) ?? defaultVariant;
-}, [hasVariants, product.variants, selectedVariantId, defaultVariant]);
+    return (
+      product?.variants?.find(
+        (v) => v.id === selectedVariantId
+      ) ?? defaultVariant
+    );
+  }, [
+    hasVariants,
+    product?.variants,
+    selectedVariantId,
+    defaultVariant,
+  ]);
 
-const imgSrc = selectedVariant?.image || product.image || DEFAULT_PRODUCT_IMAGE;
-const hoverSrc = selectedVariant?.imageHover || product.imageHover;
+  useEffect(() => {
+  setSelectedImage(null);
+}, [selectedVariantId]);
+
+const selectedVariantStock = selectedVariant
+  ? stock
+      .filter(
+        (item) =>
+          item.productId === product?.id &&
+          item.variantId === selectedVariant.id
+      )
+      .reduce((total, item) => total + item.quantity, 0)
+  : stock
+      .filter(
+        (item) =>
+          item.productId === product?.id &&
+          !item.variantId
+      )
+      .reduce((total, item) => total + item.quantity, 0);
+
+const isOutOfStock = selectedVariantStock <= 0;
+if (isLoading) {
+  return (
+    <main className="max-w-4xl mx-auto px-6 py-16">
+      <p className="text-neutral-600">
+        Chargement du produit...
+      </p>
+    </main>
+  );
+}
+if (loadError) {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <h1 className="text-2xl font-semibold">
+        Notre boutique est momentanément indisponible
+      </h1>
+
+      <p className="mt-4 text-neutral-600">
+        Impossible de charger les produits pour le moment.
+        Veuillez réessayer dans quelques instants.
+      </p>
+
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-6 rounded-xl bg-neutral-900 px-6 py-3 text-white"
+      >
+        Réessayer
+      </button>
+    </div>
+  );
+}
+
+  if (!product) {
+    return (
+      <main className="max-w-4xl mx-auto px-6 py-16">
+        <h1 className="text-2xl font-bold text-[#4A2B1A]">
+          Produit introuvable
+        </h1>
+
+        <p className="mt-3 text-neutral-600">
+          Ce produit n&apos;existe pas ou a été retiré.
+        </p>
+      </main>
+    );
+  }
+
+const baseImageSrc =
+  selectedVariant?.image ||
+  product.image ||
+  DEFAULT_PRODUCT_IMAGE;
+
+const imgSrc =
+  selectedImage || baseImageSrc;
+
+const hoverSrc =
+  selectedVariant?.imageHover || product.imageHover;
+
+const galleryImages = [
+  baseImageSrc,
+  ...(selectedVariant
+    ? selectedVariant.images ?? []
+    : product.images ?? []),
+].filter(Boolean);
+
 const selectedColorLabel = selectedVariant?.color ?? "";
 
+const displayedPrice =
+  selectedVariant?.price ?? product.price;
+
 const handleAdd = () => {
-if (isAdding) return;
+if (isAdding || isOutOfStock) return;
 
 setIsAdding(true);
 
 addItem({
-id: product.id,
-name: product.name,
-price: product.price,
-image: imgSrc,
-qty: 1,
-color: selectedColorLabel || undefined,
+  id: product.id,
+  variantId: selectedVariant?.id,
+  name: product.name,
+  price: displayedPrice,
+  image: imgSrc,
+  qty: 1,
+  color: selectedColorLabel || undefined,
+  stock: selectedVariantStock,
 });
 
 window.setTimeout(() => setIsAdding(false), 350);
 };
 
 return (
-<main className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-2">
-<div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-<div className="relative aspect-[4/5] w-full">
-<Image
-src={imgSrc}
-alt={product.name}
-fill
-className="object-contain bg-white p-4"
-sizes="(max-width: 768px) 100vw, 50vw"
-priority
-/>
+<main className="mx-auto max-w-6xl px-6 py-16">
+  <div className="grid gap-10 md:grid-cols-2">
 
-{hoverSrc && (
-<Image
-src={hoverSrc}
-alt={product.name}
-fill
-className="object-contain bg-white p-4 opacity-0 transition-opacity duration-300 hover:opacity-100"
-sizes="(max-width: 768px) 100vw, 50vw"
-/>
-)}
-</div>
-</div>
+  <div>
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <div className="relative aspect-[4/5] w-full">
+        <Image
+          src={imgSrc}
+          alt={product.name}
+          fill
+          className="object-contain bg-white p-4"
+          sizes="(max-width: 768px) 100vw, 50vw"
+          priority
+        />
+
+        {hoverSrc && (
+          <Image
+            src={hoverSrc}
+            alt={product.name}
+            fill
+            className="object-contain bg-white p-4 opacity-0 transition-opacity duration-300 hover:opacity-100"
+            sizes="(max-width: 768px) 100vw, 50vw"
+          />
+        )}
+      </div>
+    </div>
+
+    {galleryImages.length > 1 && (
+      <div className="mt-4 flex flex-wrap gap-3">
+        {galleryImages.map((imageSrc) => (
+          <button
+            key={imageSrc}
+            type="button"
+           className={[
+              "relative h-20 w-20 overflow-hidden rounded-xl border-2 bg-white transition",
+                  (selectedImage || baseImageSrc) === imageSrc
+                  ? "border-[#DAA520] shadow-sm"
+                  : "border-neutral-200 hover:border-[#DAA520]/60",
+            ].join(" ")}
+
+            onClick={() => setSelectedImage(imageSrc)}
+          >
+            <Image
+              src={imageSrc}
+              alt={product.name}
+              fill
+              className="object-contain p-1"
+              sizes="80px"
+            />
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
 
 <div>
-<h1 className="text-3xl font-bold text-neutral-900">{product.name}</h1>
+<h1 className="text-3xl font-bold leading-tight tracking-tight text-[#4A2B1A]">
+  {product.name}
+</h1>
 
 <p className="text-xs text-neutral-500 mt-1">
-{product.category === "Sacs & accessoires"
-? "Sac en raphia fait main à Madagascar"
-: product.category === "Épices"
-? "Produit naturel de Madagascar"
-: "Artisanat de Madagascar"}
+  {product.collection === "Azary"
+    ? "Création artisanale malgache · Collection Azary"
+    : product.category === "Sacs & accessoires"
+    ? "Sac en raphia fait main à Madagascar"
+    : product.category === "Bijoux"
+    ? "Bijou artisanal fait main à Madagascar"
+    : product.category === "Épices"
+    ? "Produit naturel de Madagascar"
+    : "Artisanat de Madagascar"}
 </p> 
 
 {product.badges?.includes("Best-seller") && (
@@ -106,48 +257,63 @@ Best-seller
 </span>
 )}
 
-{product.category === "Épices" && (
-<p className="mt-2 text-sm font-medium text-amber-700">
-Épices de Madagascar · Qualité premium
-</p>
-)}
-
 <p className="mt-2 text-sm uppercase tracking-wide text-amber-700">
   {product.category === "Épices"
-    ? "Commerce équitable · Produit de Madagascar"
+    ? "Sélection Nosy Kanto · Qualité artisanale"
     : "Commerce équitable · Fait main à Madagascar"}
 </p>
 
-<p className="mt-4 text-neutral-600">{product.description}</p>
+{product.originCountry && (
+  <div className="mt-4 flex items-center gap-2 text-sm text-neutral-700">
+    <span className="font-medium text-[#4A2B1A]">Origine :</span>
+    <span>{product.originCountry}</span>
+  </div>
+)}
 
-{product.category === "Épices" && (
-<ul className="mt-4 space-y-1 text-sm text-neutral-700">
-<li>- Produit naturel sélectionné avec soin</li>
-<li>- Idéal cuisine maison, desserts ou plats parfumés</li>
-<li>- Origine Madagascar</li>
-<li>- Petite sélection artisanale</li>
-</ul>
+{product.weightGrams && (
+  <div className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
+    <span className="font-medium text-[#4A2B1A]">Poids net :</span>
+    <span>{product.weightGrams} g</span>
+  </div>
+)}
+
+{product.short && (
+  <div className="mt-4 rounded-xl bg-[#F8F3E9] px-4 py-3">
+    <p className="text-sm font-medium text-[#4A2B1A]">
+      {product.short}
+    </p>
+  </div>
+)}
+
+{product.material && (
+  <div className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
+    <span className="font-medium text-[#4A2B1A]">Matière :</span>
+    <span>{product.material}</span>
+  </div>
+)}
+
+{product.dimensions && (
+  <div className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
+    <span className="font-medium text-[#4A2B1A]">Dimensions :</span>
+    <span>{product.dimensions}</span>
+  </div>
 )}
 
 <div className="mt-6">
 <p className="text-2xl font-semibold text-[#DAA520]">
-{formatEUR(product.price)}
-<span className="text-sm font-normal text-neutral-500"> / unité</span>
+{formatEUR(displayedPrice)}
+<span className="text-sm font-normal text-neutral-500">
+  {[
+  "5-gousse-vanilles-madagascar-18-20",
+  "5-gousses-vanille-madagascar-18-20-cm",
+].includes(product.slug)
+  ? " / lot de 5 gousses"
+  : " / unité"}
+
+</span>
+
 </p>
 
-{product.bundle && (
-<>
-<p className="mt-2 text-sm text-neutral-600">
-Lot de {product.bundle.qty} :
-<span className="font-semibold"> {formatEUR(product.bundle.price)}</span>
-</p>
-
-<p className="mt-1 text-xs text-green-600">
-Économisez{" "}
-{formatEUR(product.price * product.bundle.qty - product.bundle.price)} en lot
-</p>
-</>
-)}
 </div>
 
 {hasVariants && (
@@ -183,240 +349,131 @@ active
 </div>
 )}
 
-<div className="mt-10 space-y-3">
+<div className="mt-6 space-y-3"> 
 
- <p className="text-xs text-red-600 font-semibold">
-Stock limité — prochaines livraisons en cours
-</p> 
-
-<p className="text-xs text-neutral-500">
-{viewerCount} personnes consultent ce produit actuellement
-</p> 
-
-
-{product.id === "pack_madagascar" ? (
-<p className="text-xs text-red-600 font-semibold">
- Plus que 6 coffrets disponibles aujourd’hui
-</p>
-) : product.category === "Sacs & accessoires" ? (
-<p className="text-xs text-red-600 font-semibold">
- Plus que 3 sacs disponibles aujourd’hui
-</p>
-) : product.category === "Épices" ? (
-<p className="text-xs text-red-600 font-semibold">
-Petite quantité disponible aujourd’hui
-</p>
-) : null} 
-
+{!isOutOfStock && (
+  <p className="text-xs font-semibold text-green-700">
+    ✓ En stock
+  </p>
+)}
 
 <p className="text-xs text-neutral-500">
 🚚 Expédition rapide depuis la France
 </p> 
    
 <button
-type="button"
-onClick={handleAdd}
-disabled={isAdding}
-className="w-full rounded-xl bg-black py-4 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+  type="button"
+  onClick={handleAdd}
+  disabled={isAdding || isOutOfStock}
+  className="w-full rounded-xl bg-[#4A2B1A] py-4 font-semibold text-white shadow-sm transition hover:bg-[#5C3824] hover:shadow-md disabled:cursor-not-allowed disabled:bg-neutral-400 disabled:opacity-60"
 >
-{isAdding ? "Ajout en cours..." : "Ajouter au panier"}
+  {isOutOfStock
+    ? "Rupture de stock"
+    : isAdding
+    ? "Ajout en cours..."
+    : "Ajouter au panier"}
 </button>
-<p className="text-xs text-center text-neutral-500">
-- Achat sans risque       -  Paiement sécurisé
+
+<p className="text-center text-xs text-neutral-500">
+  ✓ Achat sécurisé&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;🔒 Paiement sécurisé
 </p> 
 
+</div>  
+   </div>
+    </div>
 
+    <section className="mt-10 rounded-2xl border border-neutral-200 bg-white p-6">
+  <h2 className="mb-5 text-xl font-semibold text-[#4A2B1A]">
+    Description détaillée
+  </h2>
 
-{product.bundle && (
-<>
-<p className="text-xs font-medium text-[#DAA520]">
-⭐ Le choix le plus populaire
-</p>
+  <div className="max-w-3xl space-y-3 text-sm leading-7 text-neutral-600">
+    {(product.description ?? "")
+      .split("\n")
+      .map((line, index) => {
+        const texte = line.trim();
 
-<button
-type="button"
-onClick={() => {
-addItem({
-id: product.id,
-name: `${product.name} - lot de ${product.bundle!.qty}`,
-price: product.bundle!.price,
-image: imgSrc,
-qty: 1,
-color: selectedColorLabel || undefined,
-size: `Lot de ${product.bundle!.qty}`,
-});
-}}
-className="relative w-full rounded-xl border-2 border-[#DAA520] bg-gradient-to-r from-[#fff3c4] to-[#ffe08a] py-4 font-semibold text-[#4A2B1A] transition hover:scale-[1.02] hover:shadow-md"
->
-<span className="absolute -top-2 right-3 rounded-full bg-[#DAA520] px-2 py-1 text-[10px] text-white">
-BEST DEAL
-</span>
+        if (!texte) {
+          return <div key={index} className="h-2" />;
+        }
 
-  Acheter le lot de {product.bundle.qty} — {formatEUR(product.bundle.price)}
+        if (texte.startsWith("### ")) {
+          return (
+            <h3
+              key={index}
+              className="mt-4 text-lg font-semibold text-[#4A2B1A]"
+            >
+              {texte.slice(4)}
+            </h3>
+          );
+        }
 
-<span className="mt-1 block text-xs text-green-700">
-Économisez{" "}
-{formatEUR(product.price * product.bundle.qty - product.bundle.price)}
-</span>
-</button>
-</>
-)}
-</div>
+        if (texte.startsWith("- ")) {
+          return (
+            <p key={index} className="pl-3">
+              <span className="mr-2 text-amber-700">•</span>
+              {texte.slice(2)}
+            </p>
+          );
+        }
 
-<p className="mt-3 text-xs text-neutral-500">
-{product.category === "Bijoux"
-  ? "- Livraison rapide · - Acier inoxydable · - Fait main"
-  : product.category === "Épices"
-  ? "- Livraison rapide depuis la France · - Paiement sécurisé · - Produit naturel"
-  : "- Livraison rapide depuis la France · - Paiement sécurisé · - Fait main"}
-</p> 
+        if (texte.endsWith(":")) {
+          return (
+            <p key={index} className="font-semibold text-[#4A2B1A]">
+              {texte}
+            </p>
+          );
+        }
 
-{product.id === "sac_kanto_terra" && (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-[#DAA520]">
-Avis client
-</p>
+        return <p key={index}>{texte}</p>;
+      })}
+  </div>
+</section>
 
-<p className="mt-2 text-sm text-neutral-700">
-“Très beau sac, encore plus joli en vrai. Léger et super agréable à porter.”
-</p>
+{product.category === "Épices" && relatedProducts.length > 0 && (
+  <div className="mt-8 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+      Complétez votre commande
+    </p>
 
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Florence — Toulouse
-</p>
-</div>
-)}
+    <h2 className="mt-2 text-xl font-bold text-[#4A2B1A]">
+      À associer avec votre achat
+    </h2>
 
-{product.id === "sac_kanto_lova" && (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-[#DAA520]">
-Avis client
-</p>
+    <p className="mt-2 text-sm text-neutral-600">
+      Découvrez aussi d&apos;autres saveurs de Madagascar.
+    </p>
 
-<p className="mt-2 text-sm text-neutral-700">
-“Design unique, qualité au top. On me demande tout le temps d’où vient ce sac.”
-</p>
+    <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      {relatedProducts.map((related) => (
+        <Link
+          key={related.id}
+          href={`/produit/${related.slug}`}
+          className="flex items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-[#DAA520] hover:shadow-md"
+        >
+          <div className="relative h-16 w-16 shrink-0">
+            <Image
+              src={related.image || DEFAULT_PRODUCT_IMAGE}
+              alt={related.name}
+              fill
+              className="object-contain"
+              sizes="64px"
+            />
+          </div>
 
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Sarah — Bordeaux
-</p>
-</div>
-)} 
+          <div>
+            <p className="font-semibold text-[#4A2B1A]">
+              {related.name.replace(/(\d+)\s+(g|kg|ml|cl|cm)\b/gi, "$1\u00A0$2")}
+            </p>
 
-{product.id === "vanille_16cm" || product.id === "vanille_14cm" ? (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-Avis client vérifié
-</p>
-<p className="mt-2 text-sm text-neutral-700">
-“Vanille très parfumée, parfaite pour les desserts maison.”
-</p>
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Client Nosy Kanto
-</p>
-</div>
-) : product.id === "poivre_sauvage_40g" ? (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-Avis client vérifié
-</p>
-<p className="mt-2 text-sm text-neutral-700">
-“Poivre très parfumé, il relève vraiment les plats sans être trop fort.”
-</p>
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Client Nosy Kanto
-</p>
-</div>
-) : product.id === "combava_40g" ? (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-Avis client vérifié
-</p>
-<p className="mt-2 text-sm text-neutral-700">
-“Parfum citronné incroyable, parfait dans les sauces et les desserts.”
-</p>
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Client Nosy Kanto
-</p>
-</div>
-) : product.id === "pack_madagascar" ? (
-<div className="mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-<p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-Avis client vérifié
-</p>
-<p className="mt-2 text-sm text-neutral-700">
-“Très beau coffret, idéal pour découvrir les saveurs de Madagascar.”
-</p>
-<p className="mt-2 text-xs text-neutral-500">
-⭐⭐⭐⭐⭐ Client Nosy Kanto
-</p>
-</div>
-) : null} 
-
-</div>
-
-{product.category === "Épices" && product.id !== "pack_madagascar" && (
-<div className="mt-12 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm md:col-span-2">
-<p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-Complétez votre commande
-</p>
-
-<h2 className="mt-2 text-xl font-bold text-[#4A2B1A]">
-À associer avec votre achat
-</h2>
-
-<p className="mt-2 text-sm text-neutral-600">
-Ces produits vont parfaitement avec votre sélection 👇
-</p>
-
-<div className="mt-6 grid gap-4 sm:grid-cols-3">
-<Link
-href="/produit/pack-decouverte-madagascar"
-className="flex items-center gap-4 rounded-xl border-2 border-[#DAA520] bg-[#fff8e1] p-4 transition hover:shadow-md"
->
-<img
-src="/images/epices/pack-madagascar.png"
-alt="Pack découverte Madagascar"
-className="h-16 w-16 object-contain"
-/>
-<div>
-<p className="font-semibold">  Pack découverte</p>
-<p className="text-sm text-[#DAA520]">22,90 €</p>
-<p className="text-xs text-green-600">Offre la plus avantageuse</p>
-</div>
-</Link>
-
-<Link
-href="/produit/poivre-sauvage-madagascar-voatsiperifery-40g"
-className="flex items-center gap-4 rounded-xl border p-4 transition hover:shadow-md"
->
-<img
-src="/images/epices/poivre-sauvage-40g.png"
-alt="Poivre sauvage de Madagascar"
-className="h-16 w-16 object-contain"
-/>
-<div>
-<p className="font-semibold">Poivre sauvage</p>
-<p className="text-sm text-[#DAA520]">12 € · 40 g</p>
-</div>
-</Link>
-
-<Link
-href="/produit/combava-madagascar-40g"
-className="flex items-center gap-4 rounded-xl border p-4 transition hover:shadow-md"
->
-<img
-src="/images/epices/combava-40g.png"
-alt="Combava de Madagascar"
-className="h-16 w-16 object-contain"
-/>
-<div>
-<p className="font-semibold">Combava</p>
-<p className="text-sm text-[#DAA520]">9 € · 40 g</p>
-</div>
-</Link>
-</div>
-</div>
+            <p className="mt-1 text-sm font-semibold text-[#DAA520]">
+              {formatEUR(related.price)}
+            </p>
+          </div>
+        </Link>
+      ))}
+    </div>
+  </div>
 )}
 </main>
 );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PRODUCTS, getProductBySlug } from "../../data/products";
 import ProduitClient from "./ProduitClient";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -12,45 +13,64 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
 
-  if (!product) {
+const supabase = createAdminClient();
+
+const { data: dbProduct, error } = await supabase
+  .from("products")
+  .select("name, description, image, seo_title, seo_description")
+  .eq("slug", slug)
+  .eq("status", "En vente")
+  .maybeSingle();
+
+if (error) {
+  console.error("Erreur SEO Supabase :", error);
+}
+
+const localProduct = getProductBySlug(slug);
+
+const product = dbProduct
+  ? {
+      name: dbProduct.name,
+      description: dbProduct.description ?? "",
+      image: dbProduct.image ?? "/images/placeholder.png",
+      seoTitle: dbProduct.seo_title ?? undefined,
+      seoDescription: dbProduct.seo_description ?? undefined,
+    }
+  : localProduct ?? null;
+
+if (!product) {
+
     return {
       title: "Produit introuvable",
       description: "Ce produit n'existe pas.",
     };
   }
 
+    const seoTitle = product.seoTitle?.trim() || product.name;
+    const seoDescription =
+    product.seoDescription?.trim() || product.description;
+
   return {
-    title: product.name,
-    description: product.description,
+    title: seoTitle,
+    description: seoDescription,
     openGraph: {
-      title: product.name,
-      description: product.description,
+      title: seoTitle,
+      description: seoDescription,
       images: [{ url: product.image }],
       type: "website",
       locale: "fr_FR",
     },
   };
+
 }
 
 export default async function Page({ params }: PageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
 
-  if (!product) {
-    return (
-      <main className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-2xl font-bold text-[#4A2B1A]">Produit introuvable</h1>
-        <p className="mt-3 text-neutral-600">
-          Ce produit n&apos;existe pas ou a été retiré.
-        </p>
-      </main>
-    );
-  }
-
-  return <ProduitClient product={product} />;
+  return <ProduitClient slug={slug} />;
 }
+
 
 
 
