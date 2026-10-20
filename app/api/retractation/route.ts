@@ -1,4 +1,6 @@
 import { Resend } from "resend";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
@@ -11,8 +13,31 @@ function escapeHtml(value: unknown): string {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const redis = Redis.fromEnv();
+
+const ratelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "1 h"),
+  prefix: "nosy-kanto:retractation",
+});
+
 export async function POST(request: Request) {
   try {
+    const forwardedFor = request.headers.get("x-forwarded-for");
+const ip = forwardedFor?.split(",")[0]?.trim() || "unknown";
+
+try {
+  const { success } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return Response.json(
+      { error: "Trop de demandes. Veuillez réessayer plus tard." },
+      { status: 429 }
+    );
+  }
+} catch (error) {
+  console.error("Limitation Upstash indisponible :", error);
+}
     const body = await request.json();
 
     const { firstName, lastName, email, orderNumber, products } = body;
