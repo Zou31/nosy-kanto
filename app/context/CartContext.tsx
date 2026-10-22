@@ -168,6 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       {
         id: item.id,
+        variantId: item.variantId,
         name: item.name,
         price: item.price,
         image: item.image,
