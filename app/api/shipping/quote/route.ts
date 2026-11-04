@@ -1,6 +1,17 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { getMondialRelayFrancePriceHT } from "../mondialRelayRates";
+import {
+  PACKAGING_FORMATS,
+  JEWELRY_BOX,
+  findSuitablePackaging,
+  findPackagingForArticles,
+  canFitJewelryBoxesInCarton,
+  canFitSoftPouchesInCarton,
+  canFitBlackPepperPouches,
+  parsePackagingDimensions,
+} from "../packaging";
 
 export const runtime = "nodejs";
 
@@ -17,6 +28,20 @@ export async function POST(request: Request) {
     if (!body || typeof body !== "object" || !("items" in body)) {
       return NextResponse.json(
         { ok: false, error: "Panier invalide." },
+        { status: 400 }
+      );
+    }
+
+    const allowedCountries = ["France"];
+
+    const country = (body as { country?: unknown }).country;
+
+    if (
+      typeof country !== "string" ||
+      !allowedCountries.includes(country)
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Pays de livraison non autorisé." },
         { status: 400 }
       );
     }
@@ -74,11 +99,16 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
     let totalWeightGrams = 0;
+    let jewelryPackagingWeightGrams = 0;
+    const articleDimensions: [number, number, number][] = [];
+    let jewelryCount = 0;
+    let softPouchCount = 0;
+    let blackPepperCount = 0;
 
     for (const line of lines.values()) {
       const { data: product, error } = await supabase
         .from("products")
-        .select("id, status, weight_grams")
+        .select("id, status, category, weight_grams, dimensions")
         .eq("id", line.id)
         .single();
 
@@ -90,11 +120,12 @@ export async function POST(request: Request) {
       }
 
       let weight = product.weight_grams;
+      let dimensions: unknown = product.dimensions;
 
       if (line.variantId) {
         const { data: variant, error: variantError } = await supabase
           .from("product_variants")
-          .select("id, product_id, status, weight_grams")
+          .select("id, product_id, status, weight_grams, dimensions")
           .eq("id", line.variantId)
           .eq("product_id", line.id)
           .single();
@@ -111,6 +142,7 @@ export async function POST(request: Request) {
         }
 
         weight = variant.weight_grams;
+        dimensions = variant.dimensions;
       } else {
         const { count, error: countError } = await supabase
           .from("product_variants")
@@ -166,14 +198,75 @@ export async function POST(request: Request) {
         );
       }
 
+      if (line.id === "combava_40g" || line.id === "poivre_sauvage_40g") softPouchCount += line.qty;
+      if (line.id === "78eba133-32e9-418d-8c84-0881c1bc4b97") blackPepperCount += line.qty;
       totalWeightGrams += weight * line.qty;
+
+      const parsedDimensions =
+        product.category === "Bijoux"
+          ? [
+              JEWELRY_BOX.lengthCm,
+              JEWELRY_BOX.widthCm,
+              JEWELRY_BOX.heightCm,
+            ] as [number, number, number]
+          : parsePackagingDimensions(dimensions);
+
+      if (parsedDimensions) {
+        for (let i = 0; i < line.qty; i++) {
+          articleDimensions.push(parsedDimensions);
+        }
+      }
+
+      if (product.category === "Bijoux") {
+        jewelryPackagingWeightGrams += JEWELRY_BOX.weightGrams * line.qty;
+        jewelryCount += line.qty;
+      }
     }
+
+    const expectedArticleCount = Array.from(lines.values()).reduce(
+      (total, line) => total + line.qty,
+      0
+    );
+
+    const selectedPackaging =
+      articleDimensions.length !== expectedArticleCount
+        ? null
+        : jewelryCount === expectedArticleCount
+          ? PACKAGING_FORMATS.find((carton) => canFitJewelryBoxesInCarton(jewelryCount, carton)) ?? null
+          : softPouchCount === expectedArticleCount
+            ? PACKAGING_FORMATS.find((carton) => canFitSoftPouchesInCarton(softPouchCount, carton)) ?? null
+            : blackPepperCount === expectedArticleCount
+  ? PACKAGING_FORMATS.find((carton) => canFitBlackPepperPouches(blackPepperCount, carton)) ?? null
+  : findPackagingForArticles(articleDimensions);
+
+    const provisionalWeightGrams =
+      totalWeightGrams + jewelryPackagingWeightGrams + (selectedPackaging?.weightGrams ?? 0);
+
+    const indicativeCarrierPriceHT =
+      country === "France"
+        ? getMondialRelayFrancePriceHT(provisionalWeightGrams)
+        : null;
 
     return NextResponse.json({
       ok: true,
       itemsWeightGrams: totalWeightGrams,
+      jewelryPackagingWeightGrams,
+      provisionalWeightGrams,
+      selectedPackaging: selectedPackaging
+        ? {
+            id: selectedPackaging.id,
+            name: selectedPackaging.name,
+            dimensionsCm: [
+              selectedPackaging.lengthCm,
+              selectedPackaging.widthCm,
+              selectedPackaging.heightCm,
+            ],
+          }
+        : null,
       shippingAmount: null,
-      message: "Tarifs de livraison non configurés.",
+      packagingReady: false, // Poids des cartons encore estimés
+      indicativeCarrierPriceHT,
+      message: "Frais de livraison en attente du poids des emballages et des tarifs définitifs.",
     });
   } catch (error) {
     console.error("Erreur calcul livraison :", error);

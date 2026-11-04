@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { DEFAULT_PRODUCT_IMAGE } from "../data/products";
 
@@ -22,12 +22,61 @@ export default function CommandePage() {
     country: "France",
   });
 
-  const [deliveryMode, setDeliveryMode] = useState<
-  "home" | "relay"
->("home");
+  const [deliveryMode, setDeliveryMode] = useState<"relay">("relay");
+
+  const [shippingWeight, setShippingWeight] = useState<number | null>(null);
+  const [shippingError, setShippingError] = useState<string | null>(null);
+
+  const shippingItems = JSON.stringify(
+  items.map(({ id, variantId, qty }) => ({
+    id,
+    variantId,
+    qty,
+  }))
+);
+useEffect(() => {
+  if (shippingItems === "[]") {
+    setShippingWeight(null);
+    setShippingError(null);
+    return;
+  }
+
+  const controller = new AbortController();
+
+  async function calculateShipping() {
+    setShippingWeight(null);
+    setShippingError(null);
+
+    try {
+      const response = await fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: JSON.parse(shippingItems), country: customer.country }),
+        signal: controller.signal,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Calcul de livraison impossible.");
+      }
+
+      setShippingWeight(result.itemsWeightGrams);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+
+      setShippingError(
+        error instanceof Error ? error.message : "Calcul indisponible."
+      );
+    }
+  }
+
+  void calculateShipping();
+
+  return () => controller.abort();
+}, [shippingItems, customer.country]);
 
   const hasItems = items.length > 0;
-
 
   if (!hasItems) {
     return (
@@ -176,19 +225,6 @@ export default function CommandePage() {
       className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:border-black"
     >
       <option value="France">France métropolitaine</option>
-      <option value="Belgique">Belgique</option>
-      <option value="Luxembourg">Luxembourg</option>
-      <option value="Allemagne">Allemagne</option>
-      <option value="Espagne">Espagne</option>
-      <option value="Italie">Italie</option>
-      <option value="Portugal">Portugal</option>
-      <option value="Pays-Bas">Pays-Bas</option>
-      <option value="Autriche">Autriche</option>
-      <option value="Irlande">Irlande</option>
-      <option value="Danemark">Danemark</option>
-      <option value="Suède">Suède</option>
-      <option value="Finlande">Finlande</option>
-      <option value="Grèce">Grèce</option>
     </select>
   </label>
 </div>
@@ -200,15 +236,6 @@ export default function CommandePage() {
   </p>
 
   <div className="mt-2 grid gap-3 sm:grid-cols-2">
-    <label className="flex items-center gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
-      <input
-        type="radio"
-        name="deliveryMode"
-        checked={deliveryMode === "home"}
-        onChange={() => setDeliveryMode("home")}
-      />
-      <span className="text-sm">🏠 À domicile</span>
-    </label>
 
     <label className="flex items-center gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
       <input
@@ -217,7 +244,7 @@ export default function CommandePage() {
         checked={deliveryMode === "relay"}
         onChange={() => setDeliveryMode("relay")}
       />
-      <span className="text-sm">📦 En point relais</span>
+      <span className="text-sm">📦 Mondial Relay — Point Relais ou Locker</span>
     </label>
   </div>
 
@@ -245,8 +272,18 @@ export default function CommandePage() {
 
             <div className="flex items-center justify-between">
               <span className="text-neutral-600">Livraison</span>
-              <span className="font-medium">Calculée au paiement</span>
+              <span className="font-medium">À calculer</span>
             </div>
+            {shippingError && (
+  <p className="text-xs text-red-600">
+    {shippingError}
+  </p>
+)}
+{shippingWeight !== null && (
+  <p className="text-xs text-neutral-500">
+    Poids des articles : {shippingWeight} g
+  </p>
+)}
 
             <div className="border-t border-neutral-200 pt-3 mt-3 flex items-center justify-between">
               <span className="font-semibold">Total</span>
