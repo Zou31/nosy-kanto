@@ -1,0 +1,224 @@
+
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { getMondialRelayFrancePriceHT } from "../mondialRelayRates";
+
+export const runtime = "nodejs";
+
+type CartLine = {
+  id: string;
+  variantId?: string;
+  qty: number;
+};
+
+export async function POST(request: Request) {
+  try {
+    const body: unknown = await request.json();
+
+    if (!body || typeof body !== "object" || !("items" in body)) {
+      return NextResponse.json(
+        { ok: false, error: "Panier invalide." },
+        { status: 400 }
+      );
+    }
+
+    const allowedCountries = [
+      "France",
+      "Belgique",
+      "Luxembourg",
+      "Pays-Bas",
+      "Espagne",
+      "Portugal",
+      "Italie",
+      "Pologne",
+    ];
+
+    const country = (body as { country?: unknown }).country;
+
+    if (
+      typeof country !== "string" ||
+      !allowedCountries.includes(country)
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Pays de livraison non autorisé." },
+        { status: 400 }
+      );
+    }
+
+    const items = (body as { items: unknown }).items;
+
+    if (
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      items.length > 50
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Panier invalide." },
+        { status: 400 }
+      );
+    }
+
+    const lines = new Map<string, CartLine>();
+
+    for (const item of items) {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        typeof item.id !== "string" ||
+        !item.id ||
+        (item.variantId !== undefined &&
+          (typeof item.variantId !== "string" || !item.variantId)) ||
+        !Number.isSafeInteger(item.qty) ||
+        item.qty < 1 ||
+        item.qty > 100
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "Article invalide." },
+          { status: 400 }
+        );
+      }
+
+      const key = JSON.stringify([item.id, item.variantId ?? null]);
+      const existing = lines.get(key);
+      const qty = (existing?.qty ?? 0) + item.qty;
+
+      if (!Number.isSafeInteger(qty) || qty > 100) {
+        return NextResponse.json(
+          { ok: false, error: "Quantité invalide." },
+          { status: 400 }
+        );
+      }
+
+      lines.set(key, {
+        id: item.id,
+        variantId: item.variantId,
+        qty,
+      });
+    }
+
+    const supabase = createAdminClient();
+    let totalWeightGrams = 0;
+
+    for (const line of lines.values()) {
+      const { data: product, error } = await supabase
+        .from("products")
+        .select("id, status, weight_grams")
+        .eq("id", line.id)
+        .single();
+
+      if (error || !product || product.status !== "En vente") {
+        return NextResponse.json(
+          { ok: false, error: "Produit indisponible." },
+          { status: 400 }
+        );
+      }
+
+      let weight = product.weight_grams;
+
+      if (line.variantId) {
+        const { data: variant, error: variantError } = await supabase
+          .from("product_variants")
+          .select("id, product_id, status, weight_grams")
+          .eq("id", line.variantId)
+          .eq("product_id", line.id)
+          .single();
+
+        if (
+          variantError ||
+          !variant ||
+          variant.status !== "En vente"
+        ) {
+          return NextResponse.json(
+            { ok: false, error: "Variante indisponible." },
+            { status: 400 }
+          );
+        }
+
+        weight = variant.weight_grams;
+      } else {
+        const { count, error: countError } = await supabase
+          .from("product_variants")
+          .select("id", { count: "exact", head: true })
+          .eq("product_id", line.id)
+          .eq("status", "En vente");
+
+        if (countError) {
+          throw countError;
+        }
+
+        if ((count ?? 0) > 0) {
+          return NextResponse.json(
+            { ok: false, error: "Choisissez une variante." },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (!Number.isSafeInteger(weight) || weight <= 0) {
+        return NextResponse.json(
+          { ok: false, error: "Poids du produit manquant." },
+          { status: 400 }
+        );
+      }
+
+      let stockQuery = supabase
+        .from("stock_items")
+        .select("quantity")
+        .eq("product_id", line.id);
+
+      if (line.variantId) {
+        stockQuery = stockQuery.eq("variant_id", line.variantId);
+      } else {
+        stockQuery = stockQuery.is("variant_id", null);
+      }
+
+      const { data: stockRows, error: stockError } = await stockQuery;
+
+      if (stockError) {
+        throw stockError;
+      }
+
+      const available = (stockRows ?? []).reduce(
+        (total, row) => total + Number(row.quantity ?? 0),
+        0
+      );
+
+      if (!Number.isFinite(available) || available < line.qty) {
+        return NextResponse.json(
+          { ok: false, error: "Stock insuffisant." },
+          { status: 400 }
+        );
+      }
+
+      totalWeightGrams += weight * line.qty;
+    }
+
+    const indicativeCarrierPriceHT =
+      country === "France"
+        ? getMondialRelayFrancePriceHT(totalWeightGrams)
+        : null;
+
+    return NextResponse.json({
+      ok: true,
+      itemsWeightGrams: totalWeightGrams,
+      shippingAmount: null,
+      indicativeCarrierPriceHT,
+      message: "Frais de livraison en attente du poids des emballages et des tarifs définitifs.",
+    });
+  } catch (error) {
+    console.error("Erreur calcul livraison :", error);
+
+    return NextResponse.json(
+      { ok: false, error: "Calcul indisponible." },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+
+
+
+
+
