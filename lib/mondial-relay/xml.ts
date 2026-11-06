@@ -38,7 +38,7 @@ export function buildMondialRelayDeliveryModeXml(
     throw new Error("Mondial Relay : identifiant de relais invalide.");
   }
 
-  return `<DeliveryMode Mode="mode"Location="{escapeXml(location)}" />`;
+  return `<DeliveryMode Mode="${mode}" Location="${escapeXml(location)}" />`;
 }
 export function buildMondialRelayCollectionModeXml(): string {
   return `<CollectionMode Mode="CCC" Location="" />`;
@@ -102,7 +102,7 @@ export function buildMondialRelayAddressXml(
   address: MondialRelayAddress
 ): string {
   const field = (tag: string, value: string = "") =>
-    `<tag>{escapeXml(value)}</${tag}>`;
+  `<${tag}>${escapeXml(value)}</${tag}>`;
 
   return `<Address>
   ${field("Title", address.title)}
