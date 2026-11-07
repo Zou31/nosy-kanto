@@ -23,6 +23,7 @@ export default function CommandePage() {
   });
 
   const [deliveryMode, setDeliveryMode] = useState<"relay">("relay");
+  const [selectedRelay, setSelectedRelay] = useState<string | null>(null);
 
   const [shippingWeight, setShippingWeight] = useState<number | null>(null);
   const [shippingError, setShippingError] = useState<string | null>(null);
@@ -252,6 +253,11 @@ useEffect(() => {
     Les transporteurs, points relais et tarifs disponibles
     seront proposés avant le paiement.
   </p>
+  {selectedRelay && (
+  <p className="mt-3 text-sm text-green-700">
+    Point Relais sélectionné : {selectedRelay}
+  </p>
+)}
 </div>
 
             <p className="mt-4 text-xs text-neutral-500">
