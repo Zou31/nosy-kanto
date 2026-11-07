@@ -1,6 +1,10 @@
 import "server-only";
 
 import { getMondialRelayConfig } from "./config";
+import {
+  buildMondialRelayRequestXml,
+  type MondialRelayShipment,
+} from "./xml";
 export function getMondialRelayClientStatus() {
   const config = getMondialRelayConfig();
 
@@ -15,10 +19,7 @@ export function getMondialRelayClientStatus() {
     ),
   };
 }
-import {
-  buildMondialRelayRequestXml,
-  type MondialRelayShipment,
-} from "./xml";
+
 export function prepareMondialRelayShipment(
   shipment: MondialRelayShipment
 ): string {
