@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getMondialRelayConfig } from "./config";
+import { sendMondialRelayRequest } from "./http";
 import {
   buildMondialRelayRequestXml,
   type MondialRelayShipment,
@@ -33,4 +34,10 @@ export function prepareMondialRelayShipment(
     },
     shipment
   );
+}
+export async function createMondialRelayShipment(
+  shipment: MondialRelayShipment
+): Promise<string> {
+  const xml = prepareMondialRelayShipment(shipment);
+  return sendMondialRelayRequest(xml);
 }
